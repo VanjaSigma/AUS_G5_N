@@ -56,8 +56,45 @@ namespace ProcessingModule
         /// </summary>
 		private void Acquisition_DoWork()
         {
-            //TO DO: IMPLEMENT
+            ushort counter = 0;
+
+            while (true)
+            {
+                acquisitionTrigger.WaitOne();
+                counter++;
+
+                foreach (IConfigItem item in configuration.GetConfigurationItems())
+                {
+                    bool isAnalog = item.RegistryType == PointType.ANALOG_INPUT
+                                 || item.RegistryType == PointType.ANALOG_OUTPUT;
+
+                    bool isDigital = item.RegistryType == PointType.DIGITAL_OUTPUT
+                                  || item.RegistryType == PointType.DIGITAL_INPUT;
+
+                    // analogne velicine se citaju svake 4 sekunde
+                    if (isAnalog && counter % 4 == 0)
+                    {
+                        processingManager.ExecuteReadCommand(
+                            item,
+                            configuration.GetTransactionId(),
+                            configuration.UnitAddress,
+                            item.StartAddress,
+                            item.NumberOfRegisters);
+                    }
+                    // digitalne velicine se citaju svake 2 sekunde
+                    else if (isDigital && counter % 2 == 0)
+                    {
+                        processingManager.ExecuteReadCommand(
+                            item,
+                            configuration.GetTransactionId(),
+                            configuration.UnitAddress,
+                            item.StartAddress,
+                            item.NumberOfRegisters);
+                    }
+                }
+            }
         }
+        
 
         #endregion Private Methods
 
