@@ -16,7 +16,7 @@ namespace Modbus.ModbusFunctions
         /// Initializes a new instance of the <see cref="ReadCoilsFunction"/> class.
         /// </summary>
         /// <param name="commandParameters">The modbus command parameters.</param>
-		public ReadCoilsFunction(ModbusCommandParameters commandParameters) : base(commandParameters)
+        public ReadCoilsFunction(ModbusCommandParameters commandParameters) : base(commandParameters)
         {
             CheckArguments(MethodBase.GetCurrentMethod(), typeof(ModbusReadCommandParameters));
         }
@@ -24,15 +24,41 @@ namespace Modbus.ModbusFunctions
         /// <inheritdoc/>
         public override byte[] PackRequest()
         {
-            //TO DO: IMPLEMENT
-            throw new NotImplementedException();
+            ModbusReadCommandParameters p = CommandParameters as ModbusReadCommandParameters;
+            byte[] request = new byte[12];
+
+            Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)p.TransactionId)), 0, request, 0, 2);
+            Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)p.ProtocolId)), 0, request, 2, 2);
+            Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)p.Length)), 0, request, 4, 2);
+
+            request[6] = p.UnitId;
+            request[7] = p.FunctionCode;
+
+            Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)p.StartAddress)), 0, request, 8, 2);
+            Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((short)p.Quantity)), 0, request, 10, 2);
+
+            return request;
         }
 
         /// <inheritdoc />
         public override Dictionary<Tuple<PointType, ushort>, ushort> ParseResponse(byte[] response)
         {
-            //TO DO: IMPLEMENT
-            throw new NotImplementedException();
+            ModbusReadCommandParameters p = CommandParameters as ModbusReadCommandParameters;
+            Dictionary<Tuple<PointType, ushort>, ushort> result = new Dictionary<Tuple<PointType, ushort>, ushort>();
+
+            for (int i = 0; i < p.Quantity; i++)
+            {
+                int byteIndex = i / 8;
+                int bitIndex = i % 8;
+
+                ushort value = (ushort)((response[9 + byteIndex] >> bitIndex) & 0x01);
+
+                result.Add(
+                    new Tuple<PointType, ushort>(PointType.DIGITAL_OUTPUT, (ushort)(p.StartAddress + i)),
+                    value);
+            }
+
+            return result;
         }
     }
 }
